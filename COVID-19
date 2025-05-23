@@ -1,0 +1,128 @@
+# Import necessary libraries
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+import warnings
+warnings.filterwarnings('ignore')
+
+# Set plot style
+plt.style.use('seaborn')
+%matplotlib inline
+
+# 1️⃣ Data Collection
+# Load the Our World in Data COVID-19 dataset
+url = 'https://covid.ourworldindata.org/data/owid-covid-data.csv'
+df = pd.read_csv(url)  # Alternatively, use local file: pd.read_csv('owid-covid-data.csv')
+
+# 2️⃣ Data Loading & Exploration
+# Preview the dataset
+print("Dataset Columns:")
+print(df.columns)
+print("\nFirst 5 Rows:")
+print(df.head())
+print("\nMissing Values:")
+print(df.isnull().sum())
+
+# Key columns of interest
+key_columns = ['date', 'location', 'total_cases', 'new_cases', 'total_deaths', 
+               'new_deaths', 'total_vaccinations', 'people_vaccinated', 
+               'population', 'iso_code']
+
+# 3️⃣ Data Cleaning
+# Filter for specific countries
+countries = ['Kenya', 'United States', 'India']
+df = df[df['location'].isin(countries)]
+
+# Convert date to datetime
+df['date'] = pd.to_datetime(df['date'])
+
+# Handle missing values: Fill numeric columns with 0 for simplicity
+numeric_cols = ['total_cases', 'new_cases', 'total_deaths', 'new_deaths', 
+                'total_vaccinations', 'people_vaccinated']
+df[numeric_cols] = df[numeric_cols].fillna(0)
+
+# Drop rows with missing critical values (e.g., date or location)
+df = df.dropna(subset=['date', 'location'])
+
+# Calculate death rate
+df['death_rate'] = df['total_deaths'] / df['total_cases']
+df['death_rate'] = df['death_rate'].fillna(0)  # Handle division by zero
+
+# Calculate vaccination percentage
+df['vaccination_rate'] = (df['people_vaccinated'] / df['population']) * 100
+df['vaccination_rate'] = df['vaccination_rate'].fillna(0)
+
+# 4️⃣ Exploratory Data Analysis (EDA)
+# Plot total cases over time
+plt.figure(figsize=(12, 6))
+for country in countries:
+    country_data = df[df['location'] == country]
+    plt.plot(country_data['date'], country_data['total_cases'], label=country)
+plt.title('Total COVID-19 Cases Over Time')
+plt.xlabel('Date')
+plt.ylabel('Total Cases')
+plt.legend()
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# Plot total deaths over time
+plt.figure(figsize=(12, 6))
+for country in countries:
+    country_data = df[df['location'] == country]
+    plt.plot(country_data['date'], country_data['total_deaths'], label=country)
+plt.title('Total COVID-19 Deaths Over Time')
+plt.xlabel('Date')
+plt.ylabel('Total Deaths')
+plt.legend()
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# Bar chart: Total cases by country (latest date)
+latest_date = df['date'].max()
+latest_data = df[df['date'] == latest_date]
+plt.figure(figsize=(10, 6))
+sns.barplot(x='location', y='total_cases', data=latest_data)
+plt.title(f'Total Cases by Country on {latest_date.date()}')
+plt.xlabel('Country')
+plt.ylabel('Total Cases')
+plt.tight_layout()
+plt.show()
+
+# 5️⃣ Visualizing Vaccination Progress
+# Plot cumulative vaccinations over time
+plt.figure(figsize=(12, 6))
+for country in countries:
+    country_data = df[df['location'] == country]
+    plt.plot(country_data['date'], country_data['total_vaccinations'], label=country)
+plt.title('Cumulative COVID-19 Vaccinations Over Time')
+plt.xlabel('Date')
+plt.ylabel('Total Vaccinations')
+plt.legend()
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# Bar chart: Vaccination rate by country (latest date)
+plt.figure(figsize=(10, 6))
+sns.barplot(x='location', y='vaccination_rate', data=latest_data)
+plt.title(f'Vaccination Rate (% of Population) on {latest_date.date()}')
+plt.xlabel('Country')
+plt.ylabel('Vaccination Rate (%)')
+plt.tight_layout()
+plt.show()
+
+# 6️⃣ Choropleth Map
+# Prepare data for choropleth (global data for the latest date)
+global_latest = df[df['date'] == latest_date][['iso_code', 'location', 'total_cases', 'vaccination_rate']]
+fig = px.choropleth(
+    global_latest,
+    locations='iso_code',
+    color='total_cases',
+    hover_name='location',
+    color_continuous_scale=px.colors.sequential.Plasma,
+    title=f'Global COVID-19 Cases on {latest_date.date()}'
+)
+fig.show()
